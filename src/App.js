@@ -1,105 +1,66 @@
-import React from "react"
-import Sidebar from "./components/Sidebar"
-import Editor from "./components/Editor"
-import Split from "react-split"
-import {nanoid} from "nanoid"
+import React from 'react';
+import Dice from './components/Dice'
+import { nanoid } from 'nanoid';
+import Confetti from 'react-confetti';
 
 export default function App() {
-    
-    const [notes, setNotes] = React.useState(
-        JSON.parse(localStorage.getItem("notes")) || []
-    )
-    const [currentNoteId, setCurrentNoteId] = React.useState(
-        (notes[0] && notes[0].id) || ""
-    )
-    
-    React.useEffect(() => {
-        localStorage.setItem("notes", JSON.stringify(notes))
-    }, [notes])
-    
-    function createNewNote() {
-        const newNote = {
-            id: nanoid(),
-            body: "# Type your markdown note's title here"
+    function allNewDice() {
+        //  new array to hold 10 numbers
+        const newDice = [];
+
+        /*  loop 10 times
+                push a random number from 1-6 to my array
+        */
+        for (let i = 0; i < 10; i++) {
+            newDice.push({
+                value: Math.ceil(Math.random()*6), 
+                isHeld: false,
+                id: nanoid(),
+            })
+        } 
+        return newDice;
+    }
+
+    function rollDice() {
+        if (tenzies) {
+            setDices(allNewDice());
+            setTenzies(false);
+            return;
         }
-        setNotes(prevNotes => [newNote, ...prevNotes])
-        setCurrentNoteId(newNote.id)
+        setDices(oldDices => 
+            oldDices.map(dice => dice.isHeld ? dice : {...dice, value:Math.ceil(Math.random()*6)})
+        )
     }
-    
-    function updateNote(text) {
-        // setNotes(oldNotes => oldNotes.map(oldNote => {
-        //     return oldNote.id === currentNoteId
-        //         ? { ...oldNote, body: text }
-        //         : oldNote
-        // }))
 
-        // Try to rearrange the most recently modified 
-        setNotes(oldNotes => {
-            // create a new empty array, loop over the original array
-            // if the if matches with the current id, 
-            // put the updated note at the beginning of the new array
-            // else push the old note to the end of the new arry
-            const newArray = [];
-            oldNotes.forEach(oldNote => {
-                if(oldNote.id === currentNoteId) {
-                    newArray.unshift({...oldNote, body:text})
-                }else {
-                    newArray.push(oldNote);
-                }
-            });
-            return newArray;
-        })
+    function holdDice(id) {
+        setDices(oldDices => oldDices.map(dice => dice.id===id?{...dice, isHeld:!dice.isHeld}:dice));
     }
     
-    function findCurrentNote() {
-        return notes.find(note => {
-            return note.id === currentNoteId
-        }) || notes[0]
-    }
-    
-    function deleteNote(event, noteId) {
-        event.stopPropagation();
-        setNotes( prevNotes => prevNotes.filter(note => note.id !== noteId ))
+    const [dices, setDices] = React.useState(allNewDice());
+    const [tenzies, setTenzies] = React.useState(false);
 
-    };
+    React.useEffect(() => {
+        const allHeld = dices.every(dice => dice.isHeld)
+        const firstValue = dices[0].value;
+        const allSameValue = dices.every(dice => dice.value === firstValue)
+         if (allHeld && allSameValue) {
+             setTenzies(true);
+             console.log('You won!')
+         }
+    }, [dices]);
+
+    const diceElements = dices.map( (dice) => (
+            <Dice key={dice.id} id={dice.id} value={dice.value} isHeld={dice.isHeld} holdDice={holdDice} />
+            ));
     return (
         <main>
-        {
-            notes.length > 0 
-            ?
-            <Split 
-                sizes={[30, 70]} 
-                direction="horizontal" 
-                className="split"
-            >
-                <Sidebar
-                    notes={notes}
-                    currentNote={findCurrentNote()}
-                    setCurrentNoteId={setCurrentNoteId}
-                    newNote={createNewNote}
-                    deleteNote={deleteNote}
-                />
-                {
-                    currentNoteId && 
-                    notes.length > 0 &&
-                    <Editor 
-                        currentNote={findCurrentNote()} 
-                        updateNote={updateNote} 
-                    />
-                }
-            </Split>
-            :
-            <div className="no-notes">
-                <h1>You have no notes</h1>
-                <button 
-                    className="first-note" 
-                    onClick={createNewNote}
-                >
-                    Create one now
-                </button>
-            </div>
-            
-        }
-        </main>
+            {tenzies && <Confetti />}
+            <h1 className="title">Tenzies</h1>
+            <p className="instructions">Roll until all dice are the same. Click each dice to freeze it at its current value between rolls.</p>
+            <div className='dice-container'>
+                 {diceElements}
+            </div> 
+            <button className="roll-dice" onClick={rollDice}>{tenzies?'New Game' : 'Roll'}</button>
+        </main> 
     )
-}
+} 
